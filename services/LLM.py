@@ -8,7 +8,6 @@ llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
 def generate_response(user_input, user_id, past_conversations,user_info):
     # user_info = query_chromadb(user_input)
     context = " ".join(past_conversations[-10:]) + " " + str(user_info)
-    
     prompt_template = PromptTemplate(
         input_variables=["context", "input", "user_info"],
         template="""

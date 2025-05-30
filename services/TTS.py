@@ -1,29 +1,25 @@
-import speech_recognition as sr
+import pyttsx3
+from gtts import gTTS
+from io import BytesIO
 
-recognizer = sr.Recognizer()
+engine = pyttsx3.init()
+engine.setProperty('rate', 150)
+def speak(text):
+    engine.say(text)
+    engine.runAndWait()
 
-def record_audio(timeout=3, phrase_time_limit=50, retries=3):
-    for attempt in range(retries):
-        try:
-            with sr.Microphone() as source:
-                recognizer.adjust_for_ambient_noise(source, duration=1)
-                print("Recording started. Speak now...")
-                audio_data = recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_time_limit)
-                print("Recording complete")
-                return audio_data
-        except sr.WaitTimeoutError:
-            print(f"Listening timed out, retrying... ({attempt + 1}/{retries})")
-    return None
+def synthesize_audio(text: str) -> bytes:
+    tts = gTTS(text)
+    buffer = BytesIO()
+    tts.write_to_fp(buffer)
+    return buffer.getvalue()
 
-def transcribe_audio(audio_data):
-    try:
-        print("Processing speech...")
-        text = recognizer.recognize_google(audio_data)
-        return text
-    except Exception as e:
-        return "Error in transcribing audio"
+def save_mp3_file(audio_bytes: bytes, filename: str):
+    with open(filename, "wb") as f:
+        f.write(audio_bytes)
 
 #testing
-if __name__=="__main__":
-    audio = record_audio()
-    print(transcribe_audio(audio))
+if __name__ =="__main__":
+    speak("hello how are you doing?")
+    audio_bytes  = synthesize_audio("what can I do for the summer?")
+    save_mp3_file(audio_bytes, "test.mp3") 

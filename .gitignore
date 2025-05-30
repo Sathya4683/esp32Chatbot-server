@@ -81,3 +81,7 @@ figures/
 .env
 *.secret
 *.key
+
+#testing audio output files 
+*.mp3
+*.wav
