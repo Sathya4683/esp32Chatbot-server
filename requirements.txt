@@ -3,3 +3,9 @@ langchain
 langchain-community
 python-dotenv
 sentence-transformers
+fastapi[all]
+pydantic
+httpx
+SQLAlchemy==1.4.0
+psycopg2
+asyncio
