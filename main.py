@@ -40,6 +40,7 @@ async def lifespan(app: FastAPI):
     print("Starting async scheduler loop...")
     app.state.redis = Redis(host=REDIS_HOST, port=REDIS_PORT)
     app.state.http_client = httpx.AsyncClient()
+    models.Base.metadata.create_all(bind = engine)
 
     #connect to the postgres server
     while True:
