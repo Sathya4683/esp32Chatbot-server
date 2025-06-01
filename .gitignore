@@ -85,3 +85,6 @@ figures/
 #testing audio output files 
 *.mp3
 *.wav
+
+#database folder for now
+/database/
