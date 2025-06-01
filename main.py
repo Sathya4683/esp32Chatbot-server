@@ -2,19 +2,17 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from io import BytesIO
-import threading, json, httpx, os, time, uvicorn, psycopg2, schedule, asyncio
+import threading, json, httpx, os, time, uvicorn, asyncio
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
 from redis import Redis
 from dotenv import load_dotenv
-from psycopg2.extras import RealDictCursor
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
-from database import models
-from database.database import engine, get_db, Base
-from sqlalchemy.orm import Session
 import urllib.parse
+
+load_dotenv()
 
 #imports from services modules
 from services.STT import transcribe_audio, transcribe_audio_with_whisper
@@ -23,63 +21,19 @@ from services.LLM import generate_response
 from services.chroma_store import store_chromadb
 from services.chroma_store import query_chromadb
 
-#getting database details from .env file
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-
 #getting redis (caching recent conversation-short term memory implementation) related details from .env file
 REDIS_HOST=os.getenv("REDIS_HOST")
 REDIS_PORT=os.getenv("REDIS_PORT")
 
-
-def format_past_conversations(past_conversations):
-    lines = []
-    for msg in past_conversations[-10:]:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        if role == "user":
-            lines.append(f"User: {content}")
-        elif role == "assistant":
-            lines.append(f"Assistant: {content}")
-        else:
-            lines.append(content)
-    return "\n".join(lines)
 #=================================SETTING UP THE FASTAPI APP (INTIALIZE POSTGRESQL ORM, LIFESPAN, REDIS CACHE, SCHEDULERS)====================================
-# Use lifespan for startup/shutdown logic.... set up redis client, postgresql database connector and some scheduling for the long-term memory task
+# Use lifespan for startup/shutdown logic.... set up redis client
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.redis = Redis(host=REDIS_HOST, port=REDIS_PORT,db=3)
-    # app.state.http_client = httpx.AsyncClient()
-    # models.Base.metadata.create_all(bind = engine)
-
-    #connect to the postgres server
-    # while True:
-    #     try:
-    #         conn = psycopg2.connect(
-    #             host=DB_HOST,
-    #             port=DB_PORT,
-    #             database=DB_NAME,
-    #             user=DB_USER,
-    #             password=DB_PASSWORD,
-    #             cursor_factory=RealDictCursor
-    #         )
-    #         cursor =conn.cursor()
-    #         print("connection complete")
-    #         break
-    #     except Exception as error:
-    #         print("connection not done",error)
-    #         time.sleep(2)
-    # Start background scheduler task
-    # app.state.scheduler_task = asyncio.create_task(run_scheduler(app))
     yield  # app runs here
     # Cleanup
-    # app.state.scheduler_task.cancel()
-    # await app.state.http_client.aclose()
     app.state.redis.close()
-    print("App shutdown — scheduler stopped and client closed.")
+    print("Redis client closed.")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -127,18 +81,16 @@ async def convert(request: Request,background_tasks:BackgroundTasks, audio: Uplo
     user_id = 1
     background_tasks.add_task(store_chromadb, user_text, str(user_id))
     redis_key = f"convo:{user_id}"
+
     # Retrieve and parse past conversations from redis
 
     past_data = redis.get(redis_key)
     past_conversations = json.loads(past_data) if past_data else []
     user_info = query_chromadb(user_text, str(user_id))
     user_info_str = ";".join(user_info)
-    # Format for LLM prompt (using the function from before)
 
-    context_text = format_past_conversations(past_conversations)
-    print("CONTEEXTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", context_text)
 
-    llm_text = generate_response(user_text, user_id, context_text, user_info_str)
+    llm_text = generate_response(user_text, user_id, past_conversations, user_info_str)
 
     #Storing the previous convos in the redis cache
     past_conversations.append({"role": "user", "content": user_text})
