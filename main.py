@@ -1,5 +1,5 @@
 #==============================IMPORTS AND JUST GETTING SCRIPTS FROM PYTHON PACKAGES(services/local/database)=====================
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 import threading, json, httpx, os, time, uvicorn, psycopg2, schedule, asyncio
@@ -20,6 +20,8 @@ import urllib.parse
 from services.STT import transcribe_audio, transcribe_audio_with_whisper
 from services.TTS import synthesize_audio
 from services.LLM import generate_response
+from services.chroma_store import store_chromadb
+from services.chroma_store import query_chromadb
 
 #getting database details from .env file
 DB_USER = os.getenv("DB_USER")
@@ -49,7 +51,6 @@ def format_past_conversations(past_conversations):
 # Use lifespan for startup/shutdown logic.... set up redis client, postgresql database connector and some scheduling for the long-term memory task
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting async scheduler loop...")
     app.state.redis = Redis(host=REDIS_HOST, port=REDIS_PORT,db=3)
     # app.state.http_client = httpx.AsyncClient()
     # models.Base.metadata.create_all(bind = engine)
@@ -101,7 +102,7 @@ def return_status():
 
 #the only needed route tbh.......takes in the audio request (in .wav form as of now) sent by esp32s (using HTTP.client module), and then does transcription, LLM response generation and return a converted audio reponse (which can then be played using ESP32 audio output forms)
 @app.post("/convert")
-async def convert(request: Request, audio: UploadFile = File(...)):
+async def convert(request: Request,background_tasks:BackgroundTasks, audio: UploadFile = File(...)):
     # 1. Validate content type
     valid_types = ["audio/", "application/octet-stream"]
     if not any(audio.content_type.startswith(t) for t in valid_types):
@@ -124,12 +125,13 @@ async def convert(request: Request, audio: UploadFile = File(...)):
     # 4. Generate response text from LLM
     redis = request.app.state.redis
     user_id = 1
+    background_tasks.add_task(store_chromadb, user_text, str(user_id))
     redis_key = f"convo:{user_id}"
     # Retrieve and parse past conversations from redis
 
     past_data = redis.get(redis_key)
     past_conversations = json.loads(past_data) if past_data else []
-    user_info = ["The users likes having icecreams during summer", "The user likes having watermelon juice in summer"]
+    user_info = query_chromadb(user_text, str(user_id))
     user_info_str = ";".join(user_info)
     # Format for LLM prompt (using the function from before)
 
