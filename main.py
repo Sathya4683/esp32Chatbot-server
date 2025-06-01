@@ -33,38 +33,50 @@ REDIS_HOST=os.getenv("REDIS_HOST")
 REDIS_PORT=os.getenv("REDIS_PORT")
 
 
+def format_past_conversations(past_conversations):
+    lines = []
+    for msg in past_conversations[-10:]:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "user":
+            lines.append(f"User: {content}")
+        elif role == "assistant":
+            lines.append(f"Assistant: {content}")
+        else:
+            lines.append(content)
+    return "\n".join(lines)
 #=================================SETTING UP THE FASTAPI APP (INTIALIZE POSTGRESQL ORM, LIFESPAN, REDIS CACHE, SCHEDULERS)====================================
 # Use lifespan for startup/shutdown logic.... set up redis client, postgresql database connector and some scheduling for the long-term memory task
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting async scheduler loop...")
-    app.state.redis = Redis(host=REDIS_HOST, port=REDIS_PORT)
-    app.state.http_client = httpx.AsyncClient()
-    models.Base.metadata.create_all(bind = engine)
+    app.state.redis = Redis(host=REDIS_HOST, port=REDIS_PORT,db=3)
+    # app.state.http_client = httpx.AsyncClient()
+    # models.Base.metadata.create_all(bind = engine)
 
     #connect to the postgres server
-    while True:
-        try:
-            conn = psycopg2.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                database=DB_NAME,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                cursor_factory=RealDictCursor
-            )
-            cursor =conn.cursor()
-            print("connection complete")
-            break
-        except Exception as error:
-            print("connection not done",error)
-            time.sleep(2)
+    # while True:
+    #     try:
+    #         conn = psycopg2.connect(
+    #             host=DB_HOST,
+    #             port=DB_PORT,
+    #             database=DB_NAME,
+    #             user=DB_USER,
+    #             password=DB_PASSWORD,
+    #             cursor_factory=RealDictCursor
+    #         )
+    #         cursor =conn.cursor()
+    #         print("connection complete")
+    #         break
+    #     except Exception as error:
+    #         print("connection not done",error)
+    #         time.sleep(2)
     # Start background scheduler task
-    app.state.scheduler_task = asyncio.create_task(run_scheduler(app))
+    # app.state.scheduler_task = asyncio.create_task(run_scheduler(app))
     yield  # app runs here
     # Cleanup
-    app.state.scheduler_task.cancel()
-    await app.state.http_client.aclose()
+    # app.state.scheduler_task.cancel()
+    # await app.state.http_client.aclose()
     app.state.redis.close()
     print("App shutdown — scheduler stopped and client closed.")
 
@@ -89,7 +101,7 @@ def return_status():
 
 #the only needed route tbh.......takes in the audio request (in .wav form as of now) sent by esp32s (using HTTP.client module), and then does transcription, LLM response generation and return a converted audio reponse (which can then be played using ESP32 audio output forms)
 @app.post("/convert")
-async def convert(audio: UploadFile = File(...)):
+async def convert(request: Request, audio: UploadFile = File(...)):
     # 1. Validate content type
     valid_types = ["audio/", "application/octet-stream"]
     if not any(audio.content_type.startswith(t) for t in valid_types):
@@ -106,11 +118,30 @@ async def convert(audio: UploadFile = File(...)):
     
     print("USER PROMTPT: ", user_text)
 
+
+    
+
     # 4. Generate response text from LLM
+    redis = request.app.state.redis
     user_id = 1
-    past_conversations = ["oof this summer is really bad and warm"]
+    redis_key = f"convo:{user_id}"
+    # Retrieve and parse past conversations from redis
+
+    past_data = redis.get(redis_key)
+    past_conversations = json.loads(past_data) if past_data else []
     user_info = ["The users likes having icecreams during summer", "The user likes having watermelon juice in summer"]
-    llm_text = generate_response(user_text, user_id, past_conversations, user_info)
+    user_info_str = ";".join(user_info)
+    # Format for LLM prompt (using the function from before)
+
+    context_text = format_past_conversations(past_conversations)
+    print("CONTEEXTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", context_text)
+
+    llm_text = generate_response(user_text, user_id, context_text, user_info_str)
+
+    #Storing the previous convos in the redis cache
+    past_conversations.append({"role": "user", "content": user_text})
+    past_conversations.append({"role": "assistant", "content": llm_text})
+    redis.set(redis_key, json.dumps(past_conversations[-20:]))
 
     # 5. Synthesize audio (text-to-speech)
     try:
@@ -119,8 +150,8 @@ async def convert(audio: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Audio synthesis failed: {str(e)}")
 
     # 6. Return audio file as StreamingResponse (mp3)
-    return StreamingResponse(BytesIO(response_audio_bytes), media_type="audio/mpeg")
 
+    return StreamingResponse(BytesIO(response_audio_bytes), media_type="audio/mpeg")
 
 
 #============================START THE UVICORN SERVER BY RUNNING main.py=========================================================

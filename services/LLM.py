@@ -11,14 +11,23 @@ def generate_response(user_input, user_id, past_conversations,user_info):
     prompt_template = PromptTemplate(
         input_variables=["context", "input", "user_info"],
         template="""
-        You are a personalized AI assistant. Use the following past conversations and user information to provide a relevant response:
+        You are a personalized AI assistant. Use the following past conversations and user information (some of which might be in past conversations) to provide a relevant response.
+        If the user asks for personal details you have seen, retrieve them from the conversation or user information.
         Keep replies simple, informative, and engaging.
-        Avoid emojis, asterisk and symbols.
-        Context: {context}
-        User Information: {user_info}
-        User: {input}
+        Avoid emojis, asterisks, and symbols.
+
+        Context:
+        {context}
+
+        User Information:
+        {user_info}
+
+        User:
+        {input}
+
         Assistant:
         """
+
     )
     prompt = prompt_template.format(context=context, user_info=user_info, input=user_input)
     response = llm.invoke(prompt).content

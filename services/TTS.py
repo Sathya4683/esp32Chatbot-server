@@ -21,5 +21,5 @@ def save_mp3_file(audio_bytes: bytes, filename: str):
 #testing
 if __name__ =="__main__":
     speak("hello how are you doing?")
-    audio_bytes  = synthesize_audio("what can I do for the summer?")
-    save_mp3_file(audio_bytes, "test.mp3") 
+    audio_bytes  = synthesize_audio("Do you know what my name is?")
+    save_mp3_file(audio_bytes, "test3.mp3") 

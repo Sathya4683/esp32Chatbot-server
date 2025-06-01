@@ -5,7 +5,7 @@ import tempfile
 import librosa
 
 # 1. Replace this with your actual .wav file or simulate
-audio_file_path = "sample_input.wav"  # simulate what the mic recorded
+audio_file_path = "test_pcm.wav"  # simulate what the mic recorded
 
 # 2. Send POST request
 with open(audio_file_path, "rb") as f:
