@@ -101,6 +101,12 @@ This script is useful for logical and intuitive testing of the POST request and 
 * ESP32 HTTP client integration
 * LangChain and Gemini AI for initial implementation testing
 * SQLite (storage of ChromaDB personal information recall)
+---
+## Contributors
+* https://github.com/sharanraj369
+* https://github.com/Sathya4683
+  
+
   
 
 ---
