@@ -6,8 +6,16 @@ FastAPI backend for ESP32 audio interaction. It accepts audio input from ESP32 d
 ---
 
 ##  How to Run
+### 1. Clone and CD into the repository
 
-### 1. Create and activate virtual environment
+####  Linux / macOS /Windows
+```bash
+git clone https://github.com/Sathya4683/esp32Chatbot-server
+cd esp32Chatbot-server
+````
+
+
+### 2. Create and activate virtual environment
 
 ####  Linux / macOS
 ```bash
@@ -24,7 +32,7 @@ venv\Scripts\activate
 
 ---
 
-### 2. Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -32,19 +40,21 @@ pip install -r requirements.txt
 
 ---
 
-### 3. Run the FastAPI server
+### 4. Run the FastAPI server
 
 ```bash
 python3 main.py
 # or (on Windows)
 python main.py
 ```
+The server would now be running on http://127.0.0.1:8000 and would take use http://127.0.0.1:8000/convert route to input the recorded audio from the I2S microphone (eg:INMP441) of the microcontroller and returns the LLM response in an audio file (.wav) which can be played through speaker options such as I2S DAC Module (eg:MAX98357A).
+Basically an HTTP server implementation of sending requests (prompts) to the LLM and receiving responses.
 
 ---
 
 ##  Routes
 
-### `GET /`
+### 1.`GET "/"`
 
 * Health check endpoint.
 * Returns:
@@ -57,7 +67,7 @@ python main.py
 
 ---
 
-### `POST /convert`
+### 2.`POST "/convert"`
 
 * Accepts audio file (WAV/MP3).
 * Transcribes speech to text.
