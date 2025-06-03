@@ -1,7 +1,7 @@
 import speech_recognition as sr
 from gtts import gTTS
 from io import BytesIO
-import openai
+# import openai
 
 recognizer = sr.Recognizer()
 
@@ -34,15 +34,15 @@ def transcribe_audio(audio_data_bytes):
         print(f"Transcription error: {e}")
         return "Error in transcribing audio"
 
-def transcribe_audio_with_whisper(audio_bytes: bytes) -> str:
-    audio_file = BytesIO(audio_bytes)
-    audio_file.name = "input.mp3"  # whisper needs a filename with extension
+# def transcribe_audio_with_whisper(audio_bytes: bytes) -> str:
+#     audio_file = BytesIO(audio_bytes)
+#     audio_file.name = "input.mp3"  # whisper needs a filename with extension
     
-    response = openai.Audio.transcribe(
-        model="whisper-1",
-        file=audio_file,
-    )
-    return response["text"]
+#     response = openai.Audio.transcribe(
+#         model="whisper-1",
+#         file=audio_file,
+#     )
+#     return response["text"]
 
 #testing
 if __name__=="__main__":

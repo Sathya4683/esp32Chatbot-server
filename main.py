@@ -15,7 +15,7 @@ import urllib.parse
 load_dotenv()
 
 #imports from services modules
-from services.STT import transcribe_audio, transcribe_audio_with_whisper
+from services.STT import transcribe_audio
 from services.TTS import synthesize_audio
 from services.LLM import generate_response
 from services.chroma_store import store_chromadb
@@ -46,7 +46,18 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-
+def format_past_conversations(past_conversations):
+    lines = []
+    for msg in past_conversations[-10:]:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "user":
+            lines.append(f"User: {content}")
+        elif role == "assistant":
+            lines.append(f"Assistant: {content}")
+        else:
+            lines.append(content)
+    return "\n".join(lines)
 
 #=================================================ROUTES===================================================================
 #just a simple route to check if the server is active (taking in requests)
@@ -89,8 +100,8 @@ async def convert(request: Request,background_tasks:BackgroundTasks, audio: Uplo
     user_info = query_chromadb(user_text, str(user_id))
     user_info_str = ";".join(user_info)
 
-
-    llm_text = generate_response(user_text, user_id, past_conversations, user_info_str)
+    context_text = format_past_conversations(past_conversations)
+    llm_text = generate_response(user_text, user_id, context_text, user_info_str)
 
     #Storing the previous convos in the redis cache
     past_conversations.append({"role": "user", "content": user_text})

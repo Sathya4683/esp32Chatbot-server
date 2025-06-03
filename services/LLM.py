@@ -14,7 +14,7 @@ def generate_response(user_input, user_id, past_conversations,user_info):
         You are a personalized AI assistant. Use the following past conversations and user information (some of which might be in past conversations) to provide a relevant response.
         If the user asks for personal details you have seen, retrieve them from the conversation or user information.
         Keep replies simple, informative, and engaging.
-        Avoid emojis, asterisks, and symbols.
+        Avoid emojis, asterisks, and symbols. MAKE SURE THE RESPONSES DO NOT EXCEED 2 SENTENCES AND IT'S SMALL AND CONCISE.
 
         Context:
         {context}

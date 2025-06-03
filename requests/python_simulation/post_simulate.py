@@ -1,31 +1,43 @@
-import requests
 import sounddevice as sd
 import numpy as np
-import tempfile
-import librosa
+import scipy.io.wavfile as wav
+import requests
+import os
+from tempfile import NamedTemporaryFile
 
-# 1. Replace this with your actual .wav file or simulate
-audio_file_path = "test_pcm.wav"  # simulate what the mic recorded
+# Recording settings
+SAMPLE_RATE = 16000  # Match server's expected rate
+CHANNELS = 1
+DURATION = 5  # seconds
 
-# 2. Send POST request
-with open(audio_file_path, "rb") as f:
-    files = {"audio": ("input.wav", f, "audio/wav")}
+def record_audio_to_wav(file_path, duration=DURATION):
+    print("Recording started. Speak now...")
+    recording = sd.rec(int(duration * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=CHANNELS, dtype='int16')
+    sd.wait()  # Wait until recording is done
+    print("Recording complete")
+    wav.write(file_path, SAMPLE_RATE, recording)
+
+def send_audio_to_server(file_path, url="http://localhost:8000/convert", output_file="response.wav"):
+    with open(file_path, 'rb') as f:
+        files = {'audio': (os.path.basename(file_path), f, 'audio/wav')}
+        response = requests.post(url, files=files)
+        if response.status_code == 200:
+            with open(output_file, 'wb') as out_f:
+                out_f.write(response.content)
+            print(f"✅ Response audio saved as {output_file}")
+        else:
+            print(f"❌ Server returned an error: {response.status_code} - {response.text}")
+
+def main():
+    with NamedTemporaryFile(suffix=".wav", delete=False) as temp_wav:
+        temp_path = temp_wav.name
+
     try:
-        response = requests.post("http://localhost:8000/convert", files=files)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print("Request failed:", e)
-        exit()
+        record_audio_to_wav(temp_path)
+        send_audio_to_server(temp_path)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
-# 3. Play response audio using sounddevice
-if response.ok:
-    print("Playing response audio...")
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-        tmp_file.write(response.content)
-        tmp_file.flush()
-
-        # Decode mp3 to NumPy array for playback
-        y, sr = librosa.load(tmp_file.name, sr=None)
-
-        sd.play(y, sr)
-        sd.wait()
+if __name__ == "__main__":
+    main()
