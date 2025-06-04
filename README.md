@@ -47,7 +47,7 @@ python3 main.py
 # or (on Windows)
 python main.py
 ```
-The server would now be running on http://127.0.0.1:8000 and would take use http://127.0.0.1:8000/convert route to input the recorded audio from the I2S microphone (eg:INMP441) of the microcontroller and returns the LLM response in an audio file (.wav) which can be played through speaker options such as I2S DAC Module (eg:MAX98357A).
+The server would now be running on http://127.0.0.1:8000 and would take use http://127.0.0.1:8000/convert route to input the recorded audio from the I2S microphone (eg:INMP441) of the microcontroller and returns the LLM response in an audio file (.wav or .mp3- can be changed as needed) which can be played through speaker options such as I2S DAC Module (eg:MAX98357A).
 Basically an HTTP server implementation of sending requests (prompts) to the LLM and receiving responses.
 
 ---
@@ -73,7 +73,7 @@ Basically an HTTP server implementation of sending requests (prompts) to the LLM
 * Transcribes speech to text.
 * Sends to LLM for response generation.
 * Converts response text to audio.
-* Returns audio as a streaming MP3 response.
+* Returns audio as a streaming WAV/MP3 response.
 
 ---
 ###  Optional: Test the `/convert` Route Locally
