@@ -52,6 +52,15 @@ Basically an HTTP server implementation of sending requests (prompts) to the LLM
 
 ---
 
+### Alternative: Run with Docker Compose
+
+If you have **Docker** and **Docker Compose** installed, you can start the backend without manually installing dependencies:
+
+```bash
+docker-compose up --build
+```
+---
+
 ##  Routes
 
 ### 1.`GET "/"`
